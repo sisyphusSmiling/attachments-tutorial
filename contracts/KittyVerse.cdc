@@ -83,11 +83,17 @@ access(all) contract KittyVerse : NonFungibleToken {
             pre {
                 self.ownedNFTs.containsKey(id): "NFT with given ID not found in this Collection!"
             }
-            return (&self.ownedNFTs as! &NonFungibleToken.NFT?)!
+            return (&self.ownedNFTs[id] as &NonFungibleToken.NFT?)!
         }
 
         access(all) fun borrowKittyNFT(id: UInt64): &KittyVerse.NFT? {
-            return &self.ownedNFTs[id] as! &KittyVerse.NFT?
+            if self.ownedNFTs[id] != nil {
+                // Create an authorized reference to allow downcasting
+                let ref = (&self.ownedNFTs[id] as auth &NonFungibleToken.NFT?)!
+                return ref as! &KittyVerse.NFT
+            }
+
+            return nil
         }
 
         access(all) fun deposit(token: @NonFungibleToken.NFT) {
@@ -103,7 +109,7 @@ access(all) contract KittyVerse : NonFungibleToken {
             destroy oldToken
         }
 
-        access(all) fun withdraw(id: UInt64): @NonFungibleToken.NFT {
+        access(all) fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
             let token <- self.ownedNFTs.remove(key: withdrawID)
                 ?? panic("Invalid ID provided!")
 
@@ -120,7 +126,7 @@ access(all) contract KittyVerse : NonFungibleToken {
     /// Creates a new KittyVerse Collection
     ///
     access(all) fun createEmptyCollection(): @Collection {
-        return <- Collection()
+        return <- create Collection()
     }
 
     /// Mints a new KittyVerse NFT
@@ -129,7 +135,7 @@ access(all) contract KittyVerse : NonFungibleToken {
         // Increment total supply
         self.totalSupply = self.totalSupply + 1
         // Pick a random name from the contract name array
-        let randomName = self.names[unsafeRandom() % UInt64(self.names.length)]
+        let randomName = self.kittyNames[unsafeRandom() % UInt64(self.kittyNames.length)]
         // Create the NFT
         let nft <- create NFT(name: randomName)
         // Emit an event & return the created NFT
@@ -139,7 +145,7 @@ access(all) contract KittyVerse : NonFungibleToken {
 
     init() {
         self.totalSupply = 0
-        self.names = [
+        self.kittyNames = [
             "Catastrophe",
             "Feline Dion",
             "Fur-dinand",

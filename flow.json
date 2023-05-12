@@ -31,7 +31,8 @@
 				"testnet": "631e88ae7f1d7c20"
 			}
 		},
-		"KittyVerse": "./contracts/KittyVerse.cdc"
+		"KittyVerse": "./contracts/KittyVerse.cdc",
+		"KittyHats": "./contracts/KittyHats.cdc"
 	},
 	"networks": {
 		"emulator": "127.0.0.1:3569",
