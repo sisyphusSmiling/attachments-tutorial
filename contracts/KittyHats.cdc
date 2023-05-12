@@ -29,7 +29,8 @@ access(all) contract KittyHats : NonFungibleToken {
     /* KittyHats Events */
     //
     access(all) event HatMinted(id: UInt64, name: String)
-    access(all) event HatUpdatedKitty(hatName: String, kittyName: String, kittyID: UInt64)
+    access(all) event HatAddedToKitty(hatName: String, kittyName: String, kittyID: UInt64)
+    access(all) event HatRemovedFromKitty(hatName: String, kittyName: String, kittyID: UInt64)
 
     /* KittyHats NFT */
     //
@@ -71,8 +72,16 @@ access(all) contract KittyHats : NonFungibleToken {
         
         /// An example of a function someone might put in their hat resource
         ///
-        access(self) fun tipHat(): String {
+        access(all) fun tipHat(): String {
             return KittyHats.hatsToGreetings[self.name] ?? "Hello!"
+        }
+
+        access(contract) fun updateLastKittyName(_ new: String) {
+            self.lastKittyName = new
+        }
+
+        access(contract) fun updateLastKittyID(_ new: UInt64) {
+            self.lastKittyID = new
         }
     }
 
@@ -84,48 +93,35 @@ access(all) contract KittyHats : NonFungibleToken {
     access(all) attachment HatAttachment for KittyVerse.NFT {
         /// The Hat contained by this attachment
         access(self) var hatNFT: @NFT?
-        /// The name of the KittyVerse NFT this attachment is on
-        access(self) let kittyName: String
-        /// The ID of the KittyVerse NFT this attachment is on
-        access(self) let kittyID: String
         
         init() {
-            // Assign the name & ID of the KittyVerse NFT this is attached to 
-            self.kittyName = base.getName()
-            self.kittyID = base.id
-            // Assign a random hat
-            let randomHat: String = KittyHats.hatsToGreetings.keys[
-                unsafeRandom() % UInt64(KittyHats.hatsToGreetings.length)
-            ]
-            self.hatNFT <- create Hat(name: randomHat)
-            // Assign the new NFT's last KittyVerse values as the one this attachment is being attached to
-            self.hatNFT.lastKittyName = self.kittyName
-            self.hatNFT.lastKittyID = self.kittyID
+            self.hatNFT <- nil
         }
 
-        access(all) fun borrowHat(): &Hat? {
-            return &self.hat as &Hat?
+        access(all) fun borrowHat(): &NFT? {
+            return &self.hatNFT as &NFT?
         }
 
-        access(all) fun getKittyName(): String {
-            return self.kittyName
-        }
-
-        access(all) fun addHat(_ new: @NFT) {
+        access(all) fun addHatNFT(_ new: @NFT) {
             pre {
                 self.hatNFT == nil: "Cannot add NFT while assigned - must remove first!"
             }
             self.hatNFT <-! new
         }
 
-        access(contract) fun removeHat(): @NFT? {
+        access(contract) fun removeHatNFT(): @NFT? {
             var tmp: @NFT? <- nil
-            tmp <-> self.hat
+            tmp <-> self.hatNFT
+            
+            // Update the name & id of the base NFT as last seen
+            tmp?.updateLastKittyName(base.getName())
+            tmp?.updateLastKittyID(base.id)
+            
             return <- tmp
         }
 
         destroy() {
-            destroy self.hat
+            destroy self.hatNFT
         }
     }
 
@@ -199,18 +195,22 @@ access(all) contract KittyHats : NonFungibleToken {
             pre {
                 self.ownedNFTs.containsKey(hatID): "No KittyHat NFT with given ID in this Collection!"
             }
-            // Check if the KittyVerse NFT already has a HatAttachment
-            if toKitty[HatAttachment] != nil {
-                return <- toKitty
-            }
-            // Attach the HatAttachment - Hat creation is handled during attachment init()
-            let kittyWithHat <- attach HatAttachment() to <- toKitty
-            // Get a reference to the KittyHats attachment.hatNFT
-            let hatRef: &NFT = kittyWithHat[HatAttachment]!.borrowHat()
-            emit HatAddedToKitty(hatName: hatRef.getHatName(), kittyName: kittyWithHat.getName(), kittyID: kittyWithHat.id)
+            // Make sure an attachment is added if need be
+            let withAttachment: @KittyVerse.NFT <-self.addAttachment(toNFT: <-toKitty)
+
+            // Withdraw the NFT we're going to put in the attachment
+            let hat  <- self.withdraw(withdrawID: hatID) as! @NFT
+
+            // Add the hat to the HatAttachment
+            withAttachment[HatAttachment]!.addHatNFT(<-hat)
+            
+            // Get a reference to the KittyHats attachment.hatNFT & emit event
+            let hatRef: &NFT = withAttachment[HatAttachment]!.borrowHat()!
+            emit HatAddedToKitty(hatName: hatRef.getHatName(), kittyName: withAttachment.getName(), kittyID: withAttachment.id)
+            
             // Return the NFT with the HatAttachment added
             // Note: the Hat resource is created in the HatAttachment init() body
-            return <- kittyWithHat
+            return <- withAttachment
         }
 
         /// Removes a KittyHats.NFT from a KittyVerse.NFT from a HatAttachment
@@ -219,13 +219,27 @@ access(all) contract KittyHats : NonFungibleToken {
             // Check if the KittyVerse NFT already has a HatAttachment
             if let attached: &HatAttachment = fromKitty[HatAttachment] {
                 // If there's a KittyHats NFT in the attachment, remove it...
-                if let removedHat: @NFT <- attached.removeHat() {
+                if let removedHat: @NFT <- attached.removeHatNFT() {
+                    emit HatRemovedFromKitty(
+                        hatName: removedHat.getHatName(),
+                        kittyName: removedHat.getLastKittyName()!,
+                        kittyID: removedHat.getLastKittyID()!
+                    )
                     // Then deposit it back to this Collection
                     self.deposit(token: <- removedHat)
                 }
             }
             // Simply return the given KittyVerse NFT if there's no HatAttachment on it
             return <- fromKitty
+        }
+
+        /// Helper method that adds a HatAttachment if needed to the given KittyVerse NFT
+        ///
+        access(self) fun addAttachment(toNFT: @KittyVerse.NFT): @KittyVerse.NFT {
+            if toNFT[HatAttachment] == nil {
+                return <- attach HatAttachment() to <- toNFT
+            }
+            return <-toNFT
         }
 
         destroy() {
@@ -241,7 +255,7 @@ access(all) contract KittyHats : NonFungibleToken {
 
     /// Mints an NFT
     ///
-    access(all) fun MintNFT(): @NFT {
+    access(all) fun mintNFT(): @NFT {
         // Create an NFT
         let nft <- create NFT(name: self.getRandomHatName())
         // Emit the relevant event with the new NFT's info & return
