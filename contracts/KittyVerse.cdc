@@ -12,8 +12,10 @@ import "NonFungibleToken"
 /// **NOTE:** This contract is intended for demoonstration & educational purposes and should not be used in production
 ///
 access(all) contract KittyVerse : NonFungibleToken {
-
+    
+    /// Totat NFTs minted
     access(all) var totalSupply: UInt64
+    /// Names of all KittyVerse cats
     access(contract) let kittyNames: [String]
 
     /* Paths */
@@ -49,7 +51,7 @@ access(all) contract KittyVerse : NonFungibleToken {
 
         /// Returns the name of this KittyVerse NFT
         ///
-        pub fun getName(): String {
+        access(all) fun getName(): String {
             return self.name
         }
     }
@@ -62,6 +64,7 @@ access(all) contract KittyVerse : NonFungibleToken {
         access(all) fun deposit(token: @NonFungibleToken.NFT)
         access(all) fun getIDs(): [UInt64]
         access(all) fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
+        access(all) fun borrowNFTSafe(id: UInt64): &NonFungibleToken.NFT? {
         access(all) fun borrowKittyNFT(id: UInt64): &KittyVerse.NFT?
     }
 
@@ -75,10 +78,14 @@ access(all) contract KittyVerse : NonFungibleToken {
             self.ownedNFTs <- {}
         }
         
+        /// Returns all the NFT IDs in this Collection
+        ///
         access(all) fun getIDs(): [UInt64] {
             return self.ownedNFTs.keys
         }
 
+        /// Returns a reference to the NFT with given ID, panicking if not found
+        ///
         access(all) fun borrowNFT(id: UInt64): &NonFungibleToken.NFT {
             pre {
                 self.ownedNFTs.containsKey(id): "NFT with given ID not found in this Collection!"
@@ -86,16 +93,26 @@ access(all) contract KittyVerse : NonFungibleToken {
             return (&self.ownedNFTs[id] as &NonFungibleToken.NFT?)!
         }
 
+        /// Returns a reference to the NFT with given ID or nil if not found
+        ///
+        access(all) fun borrowNFTSafe(id: UInt64): &NonFungibleToken.NFT? {
+            return &self.ownedNFTs[id] as &NonFungibleToken.NFT?
+        }
+
+        /// Returns a reference to the KittyVerse.NFT with given ID or nil if not found
+        ///
         access(all) fun borrowKittyNFT(id: UInt64): &KittyVerse.NFT? {
-            if self.ownedNFTs[id] != nil {
+            // **Optional Binding** - Assign if the value is not nil for given ID
+            if let ref = &self.ownedNFTs[id] as auth &NonFungibleToken.NFT? {
                 // Create an authorized reference to allow downcasting
-                let ref = (&self.ownedNFTs[id] as auth &NonFungibleToken.NFT?)!
                 return ref as! &KittyVerse.NFT
             }
-
+            // Otherwise return nil
             return nil
         }
 
+        /// Adds the given NFT to the Collection
+        ///
         access(all) fun deposit(token: @NonFungibleToken.NFT) {
             let token <- token as! @KittyVerse.NFT
 
@@ -104,15 +121,19 @@ access(all) contract KittyVerse : NonFungibleToken {
             // add the new token to the dictionary which removes the old one
             let oldToken <- self.ownedNFTs[id] <- token
 
+            // **Optional Chaining** - emit the address of the owner if not nil, otherwise emit nil
             emit Deposit(id: id, to: self.owner?.address)
 
             destroy oldToken
         }
 
+        /// Returns the contained NFT with given ID, panicking if not found
+        ///
         access(all) fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
             let token <- self.ownedNFTs.remove(key: withdrawID)
                 ?? panic("Invalid ID provided!")
 
+            // **Optional Chaining** - emit the address of the owner if not nil, otherwise emit nil
             emit Withdraw(id: token.id, from: self.owner?.address)
 
             return <-token
@@ -144,7 +165,9 @@ access(all) contract KittyVerse : NonFungibleToken {
     }
 
     init() {
+        // Assign initial supply of 0
         self.totalSupply = 0
+        // Assign all of the possible names - an Admin resource could have made this easily updatable
         self.kittyNames = [
             "Catastrophe",
             "Feline Dion",
@@ -158,6 +181,8 @@ access(all) contract KittyVerse : NonFungibleToken {
             "Sir Scratch-a-Lot"
         ]
 
+        // Name canonical paths
+        //
         self.CollectionStoragePath = /storage/KittVerseCollection
         self.CollectionPublicPath = /public/KittVerseCollection
         self.ProviderPrivatePath = /private/KittVerseProvider
