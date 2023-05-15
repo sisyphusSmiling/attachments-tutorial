@@ -1,0 +1,145 @@
+# TODO: Expand on outline
+
+> :warning: This guidance is in prep for a Playground tutorial, but attachments must first be enabled on Playground for
+this guidance to make sense.
+
+# KittyVerse + KittyHats
+
+To showcase how attachments unlock permissionless composability on Flow, this tutorial will walk you though making your
+own cat-inspired NFT collection and a wardrobe of hats to go along with them. Let's put some hats on some cats!
+
+## What is composability?
+
+Before digging in, let's talk about what we mean by **_composability_**.
+
+<Callout type="info">
+
+Composability is the ability for existing components in one construction to be reused and even extended for another 
+purpose. <br/>
+
+Think of composable architectures like [building with legos](https://twitter.com/cdixon/status/1450462593232089088?s=20) 
+- you build something you need as a block or set of blocks and someone else can come along and use those same blocks to 
+build something entirely new.
+
+Composability on Flow, especially with attachments is permissionless because not only can you build with existing 
+components, but no one can stop you from doing so!
+
+</Callout>
+
+Permissionless composability is huge because, as builders, we can build on existing constructs for existing 
+communities and be sure that the original developer won't rug our access - AKA platform risk.
+
+For an example of the negative case, just look at how big tech companies locked down their API in the early days.
+
+Less duplicate code, easier to bootstrap attention and adoption, and users benefit from the utility you built into 
+something they already presumably own and love - win-win-win!
+
+# Define our Base NFT - KittyVerse
+
+## NonFungibleToken Standard
+
+- Building on the existing standard
+- Encouraged to also implement MetadataViews and ViewResolver contract interfaces, but keeping things simple
+- We're defining the KittyVerse NFT for the purposes of this tutorial, but just as easily could've used an existing NFT 
+project since we're building with attachments
+- If totally new to this, take a look at NonFungibleToken tutorials - TODO: Link these
+
+## Contract Overview
+
+- Contract interface implementation
+    - Events
+    - Nested resource definitions
+- Attribute overview
+- Note on `unsafeRandom()`
+- Opportunities to extend the contract
+
+## Deploy KittyVerse contract
+
+- Deploy NonFungibleToken to `0x01`
+- Deploy KittyVerse to `0x02`
+
+## Setup account & Mint KittyVerse NFT
+
+- send `tx_01_setup_kittyverse_account.cdc` signing with `0x02`
+- send `tx_02_mint_kittyverse_nft.cdc` signing with `0x02`
+- send `tx_02_mint_kittyverse_nft.cdc` again signing with `0x02`
+- query NFT.id - execute `script_01_get_kittyverse_ids.cdc` providing `0x02` as argument
+    - see two unique NFT IDS - take note of them, next let's prep them some hats
+
+# Define our Attachments - KittyHats
+
+## Attachments
+
+- What are they?
+    - In Cadence
+    - Simple mental model
+        - "Like glue between resources"
+        - ![TODO - Diagram](./attachment-diagram.png)
+- Why do they matter?
+    - Can create attachments for anything without needing original developer's:
+        - Participation
+        - Permission
+
+## Contract Overview
+
+### NFT
+
+- Definitions
+
+### HatAttachment
+
+- Common misconception: The attachment is the thing
+    - Correction: Attachments glue the thing(s)
+        - As mentioned previously, attachments are like glue between resources
+    - As of now, attachments can be fully referenced anywhere the NFT can be referenced - this can complicate access 
+    control
+        - We made `removeHat()` `access(contract)` and callable in Collection only
+        - If we didn't, anyone would have been able to remove a KittyHats NFT from via a user's Collection public 
+        Capability
+- Basically enabling the base resource - KittyHats NFT in this case - to receive a KittyHats NFT
+
+### Collection
+
+- Your standard Collection
+- Added ability to remove KittyHats from KittyVerse NFTs and return them to their Collection
+
+## Deploy KittyHats contract
+
+- Deploy KittyHats to `0x03`
+
+## Setup account & Mint KittyHats NFT
+
+- send `tx_03_setup_kittyhats_account.cdc` signing with `0x02`
+- query NFT.id - `script_03_get_kittyhats_ids_and_names.cdc` providing `0x02` as argument
+    - see one id and note it for the next step
+
+# Put hats on cats
+
+- send `tx_05_attach_hat_to_cat.cdc` signing with `0x02`
+    - provid KittyHats.NFT.id & KittyVerse.NFT.id of your choice
+- query cats & hats - `script_04_get_kittyverse_names_and_hat` providing `0x02` as argument
+    - see the KittyVerse.NFT names - one should have your hat name and the other should have nil - Your cat has a hat!
+- query KittyHats NFT IDs - `script_03_get_kittyhats_ids_and_names.cdc` providing `0x02` as argument
+    - see that your hat is no longer in your Collection
+
+# Remove the hat
+
+- send `tx_06_remove_hat_from_cat.cdc` signing with `0x02` and providing your KittyVerse NFT id name
+- query cats & hats - `script_04_get_kittyverse_names_and_hat` providing `0x02` as argument
+    - see that your cat's hat has been removed
+- query KittyHats NFT IDs - `script_03_get_kittyhats_ids_and_names.cdc` providing `0x02` as argument
+    - see that your hat is back in your Collection
+
+# Extra Credit
+
+- Implement MetadataViews and ViewResolver interfaces
+    - Simple implementation
+    - Add image URIs to the NFTs
+- Add Admin resources to both contracts to customize
+    - Enable addition/removal of possible cats & hats + greetings
+    - Private minting
+- Consider: How would you enable a public mints accepting FungibleTokens?
+- Can you think of any other use cases for attachments?
+    - Think about this - we just unlocked the ability for an NFT to own other NFTs
+        - Now extend it - why just own one NFT? What about a whole Collection? What else could NFTs own?
+    - Take a look at Flowverse projects and start building!
