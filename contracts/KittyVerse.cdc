@@ -13,7 +13,7 @@ import "NonFungibleToken"
 ///
 access(all) contract KittyVerse : NonFungibleToken {
     
-    /// Totat NFTs minted
+    /// Total NFTs minted
     access(all) var totalSupply: UInt64
     /// Names of all KittyVerse cats
     access(contract) let kittyNames: [String]
@@ -64,7 +64,7 @@ access(all) contract KittyVerse : NonFungibleToken {
         access(all) fun deposit(token: @NonFungibleToken.NFT)
         access(all) fun getIDs(): [UInt64]
         access(all) fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
-        access(all) fun borrowNFTSafe(id: UInt64): &NonFungibleToken.NFT? {
+        access(all) fun borrowNFTSafe(id: UInt64): &NonFungibleToken.NFT?
         access(all) fun borrowKittyNFT(id: UInt64): &KittyVerse.NFT?
     }
 
@@ -156,7 +156,9 @@ access(all) contract KittyVerse : NonFungibleToken {
         // Increment total supply
         self.totalSupply = self.totalSupply + 1
         // Pick a random name from the contract name array
-        let randomName = self.kittyNames[unsafeRandom() % UInt64(self.kittyNames.length)]
+        let randomName = self.kittyNames[
+                unsafeRandom() % UInt64(self.kittyNames.length)
+            ]
         // Create the NFT
         let nft <- create NFT(name: randomName)
         // Emit an event & return the created NFT

@@ -9,7 +9,8 @@ import "KittyVerse"
 /// Learn more about composable resources in this tutorial: https://developers.flow.com/cadence/tutorial/resources-compose
 ///
 access(all) contract KittyHats : NonFungibleToken {
-
+    
+    /// Totat NFTs minted
     access(all) var totalSupply: UInt64
     /// A mapping of hats to greetings
     access(contract) let hatsToGreetings: {String: String}
@@ -66,6 +67,7 @@ access(all) contract KittyHats : NonFungibleToken {
         }
 
         /// Simple getter for the last KittyVerse ID
+        ///
         access(all) fun getLastKittyID(): UInt64? {
             return self.lastKittyID
         }
@@ -76,10 +78,14 @@ access(all) contract KittyHats : NonFungibleToken {
             return KittyHats.hatsToGreetings[self.name] ?? "Hello!"
         }
 
+        /// Allows containing attachment to update the last KittyVerse.NFT.name this NFT was attached to
+        ///
         access(contract) fun updateLastKittyName(_ new: String) {
             self.lastKittyName = new
         }
 
+        /// Allows containing attachment to update the last KittyVerse.NFT.id this NFT was attached to
+        ///
         access(contract) fun updateLastKittyID(_ new: UInt64) {
             self.lastKittyID = new
         }
@@ -98,10 +104,14 @@ access(all) contract KittyHats : NonFungibleToken {
             self.hatNFT <- nil
         }
 
+        /// Returns a reference to the contained KittyHats.NFT or nil if none contained
+        ///
         access(all) fun borrowHat(): &NFT? {
             return &self.hatNFT as &NFT?
         }
 
+        /// Adds a KittyHats.NFT to this attachment, panicking if one already assigned
+        ///
         access(all) fun addHatNFT(_ new: @NFT) {
             pre {
                 self.hatNFT == nil: "Cannot add NFT while assigned - must remove first!"
@@ -109,11 +119,17 @@ access(all) contract KittyHats : NonFungibleToken {
             self.hatNFT <-! new
         }
 
+        /// Removes the contained KittyHats.NFT if contained or nil otherwise
+        ///
         access(contract) fun removeHatNFT(): @NFT? {
+            // Cannot move nested resources, so we:
+            // Assign a temporary optional resource as nil and swap
             var tmp: @NFT? <- nil
+            // Swap nested and temporary resources
             tmp <-> self.hatNFT
             
-            // Update the name & id of the base NFT as last seen
+            // Update the name & id of the base NFT as last seen in KittyHats.NFT before returning
+            // **NOTE:** Attachments can access publicly accessible fields & methods from their base resources
             tmp?.updateLastKittyName(base.getName())
             tmp?.updateLastKittyID(base.id)
             
@@ -133,6 +149,7 @@ access(all) contract KittyHats : NonFungibleToken {
         access(all) fun deposit(token: @NonFungibleToken.NFT)
         access(all) fun getIDs(): [UInt64]
         access(all) fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
+        access(all) fun borrowNFTSafe(id: UInt64): &NonFungibleToken.NFT?
         access(all) fun borrowKittyHatsNFT(id: UInt64): &KittyHats.NFT?
     }
 
@@ -146,10 +163,14 @@ access(all) contract KittyHats : NonFungibleToken {
             self.ownedNFTs <- {}
         }
         
+        /// Returns all the NFT IDs in this Collection
+        ///
         access(all) fun getIDs(): [UInt64] {
             return self.ownedNFTs.keys
         }
 
+        /// Returns a reference to the NFT with given ID, panicking if not found
+        ///
         access(all) fun borrowNFT(id: UInt64): &NonFungibleToken.NFT {
             pre {
                 self.ownedNFTs.containsKey(id): "NFT with given ID not found in this Collection!"
@@ -157,16 +178,27 @@ access(all) contract KittyHats : NonFungibleToken {
             return (&self.ownedNFTs[id] as &NonFungibleToken.NFT?)!
         }
 
+        /// Returns a reference to the NFT with given ID or nil if not found
+        ///
+        access(all) fun borrowNFTSafe(id: UInt64): &NonFungibleToken.NFT? {
+            return &self.ownedNFTs[id] as &NonFungibleToken.NFT?
+        }
+
+        /// Returns a reference to the KittyHats.NFT with given ID or nil if not found
+        ///
         access(all) fun borrowKittyHatsNFT(id: UInt64): &KittyHats.NFT? {
+            // **Optional Binding** - Assign if the value is not nil for given ID
             if self.ownedNFTs[id] != nil {
                 // Create an authorized reference to allow downcasting
                 let ref = (&self.ownedNFTs[id] as auth &NonFungibleToken.NFT?)!
                 return ref as! &KittyHats.NFT
             }
-
+            // Otherwise return nil
             return nil
         }
-
+        
+        /// Adds the given NFT to the Collection
+        ///
         access(all) fun deposit(token: @NonFungibleToken.NFT) {
             let token <- token as! @KittyHats.NFT
 
@@ -175,11 +207,14 @@ access(all) contract KittyHats : NonFungibleToken {
             // add the new token to the dictionary which removes the old one
             let oldToken <- self.ownedNFTs[id] <- token
 
+            // **Optional Chaining** - emit the address of the owner if not nil, otherwise emit nil
             emit Deposit(id: id, to: self.owner?.address)
 
             destroy oldToken
         }
-
+        
+        /// Returns the contained NFT with given ID, panicking if not found
+        ///
         access(all) fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
             let token <- self.ownedNFTs.remove(key: withdrawID)
                 ?? panic("Invalid ID provided!")
@@ -236,10 +271,12 @@ access(all) contract KittyHats : NonFungibleToken {
         /// Helper method that adds a HatAttachment if needed to the given KittyVerse NFT
         ///
         access(self) fun addAttachment(toNFT: @KittyVerse.NFT): @KittyVerse.NFT {
-            if toNFT[HatAttachment] == nil {
-                return <- attach HatAttachment() to <- toNFT
+            // If attachment already exists, return
+            if toNFT[HatAttachment] != nil {
+                return <-toNFT
             }
-            return <-toNFT
+            // Otherwise, add the attachment
+            return <- attach HatAttachment() to <- toNFT
         }
 
         destroy() {
@@ -272,12 +309,16 @@ access(all) contract KittyHats : NonFungibleToken {
     }
 
     init() {
+        // Assign initial supply of 0
         self.totalSupply = 0
+        // Assign all of the possible hats + greetings - an Admin resource could have made this easily updatable
         self.hatsToGreetings = {
             "Cowboy Hat": "Howdy Y'all",
             "Top Hat": "Greetings, fellow aristocats!"
         }
-
+        
+        // Name canonical paths
+        //
         self.CollectionStoragePath = /storage/KittHatsCollection
         self.CollectionPublicPath = /public/KittHatsCollection
         self.ProviderPrivatePath = /private/KittHatsProvider
