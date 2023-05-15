@@ -2,7 +2,8 @@ import "NonFungibleToken"
 import "KittyVerse"
 import "KittyHats"
 
-/// This transaction removes an attached KittyHats NFT from a KittyVerse NFT
+/// This transaction removes an attached KittyHats NFT from a KittyVerse NFT and puts it back in the signer's
+/// KittyHats Collection
 ///
 transaction(catID: UInt64) {
 

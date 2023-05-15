@@ -2,6 +2,7 @@ import "KittyVerse"
 import "NonFungibleToken"
 
 /// This transaction sets up the signer with a KittyVerse Collection
+///
 transaction {
     prepare(signer: AuthAccount) {
         // Check if a Collection is already in Storage where expected

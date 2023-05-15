@@ -1,7 +1,7 @@
 import "NonFungibleToken"
 import "KittyHats"
 
-/// This transaction sets up the signer with a KittyVerse Collection
+/// This transaction sets up the signer with a KittyHats Collection
 ///
 transaction {
     prepare(signer: AuthAccount) {

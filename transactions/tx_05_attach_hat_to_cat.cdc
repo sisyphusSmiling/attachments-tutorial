@@ -2,7 +2,8 @@ import "NonFungibleToken"
 import "KittyVerse"
 import "KittyHats"
 
-/// This transaction attaches a KittyHats NFT to a KittyVerse NFT
+/// This transaction attaches a KittyHats NFT to a KittyVerse NFT and puts it back in the signer's KittyVerse
+/// Collection
 ///
 transaction(hatID: UInt64, catID: UInt64) {
 
