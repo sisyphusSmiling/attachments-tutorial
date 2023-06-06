@@ -74,13 +74,65 @@ project since we're building with attachments
     - In Cadence
     - Simple mental model
         - "Like glue between resources"
-        - ![TODO - Diagram](./attachment-diagram.png)
+        - ![KittyVerse & KittyHats attached](./diagrams/cat_with_hat.png)
 - Why do they matter?
     - Can create attachments for anything without needing original developer's:
         - Participation
         - Permission
 
+### Overview
+
+- Conceptual
+    - Attachments are a special type that can be added to resources (doc link needed)
+    - You might be tempted to simply define all your functionality in the attachment, but you'll lose the existence and
+      uniqueness guarantees inherent to resources as well as make access control significantly harder for yourself
+        - As mentioned earlier, attachments are best thought of as glue between resources
+            - Define an attachment that can hold some resource, designed to be added to a base resource
+    - Note that you need access to the base resource to add an attachment to it
+        - So to add an attachment to an NFT, you need to first withdraw that NFT from its Collection
+- Syntax
+    - Accessing an attachment
+    ```cadence
+    let attachmentRef: &KittyHats.HatAttachment? = nft[KittyHats.HatAttachment]
+    ```
+    - Adding an attachment
+    ```cadence
+    access(self) fun addAttachment(toNFT: @KittyVerse.NFT): @KittyVerse.NFT {
+        // If attachment already exists, return
+        if toNFT[HatAttachment] != nil {
+            return <-toNFT
+        }
+        // Otherwise, add the attachment
+        return <- attach HatAttachment() to <- toNFT
+    }
+    // Otherwise, add the attachment
+    return <- attach HatAttachment() to <- toNFT
+    ```
+- Gotchas
+    - Accessing attachments of a given type requires a static type declaration
+    - Attempting to add an attachment to a resource when one already exists will result in a runtime error
+        - This is why we check if an attachment already exists before adding one in the example above
+        - You'll want to lean on simple helper methods to conditionally add attachments within your contracts
+- Great for
+    - Building on existing resources
+    - Establishing a pattern that encourages others to build on those resources you're creating
+    
 ## Contract Overview
+
+### Why Attachments?
+
+- Why are we defining attachments instead of simply adding a field on the KittyVerse NFTs that can store hats?
+    - If we didn't define KittyVerse, we couldn't do that - no way we can alter the underlying contract
+        - Attachments allow us to permissionlessly extend existing resources with new data and functionality
+        - Why would we do that anyway?
+            - We're creating utility, and utility is valuable - you're creating value!
+            - If KittyVerse already has an enthusiastic community behind it, we'd be bootstrapping a community
+              for our KittyHats collection - we're creating something useful on top of a product that people are
+              already using and are excited about which could drastically drive initial momentum and adoption
+        - Note that we couldn't do this without attachments!
+    - Let's say we're defining both, why use attachments?
+        - Building with attachments is a clear signal that you're designing for this permissionless composability
+            - You encourage others to define their own sorts of attachments for KittyVerse NFTs
 
 ### NFT
 
@@ -94,6 +146,7 @@ project since we're building with attachments
     - As of now, attachments can be fully referenced anywhere the NFT can be referenced - this can complicate access 
     control
         - We made `removeHat()` `access(contract)` and callable in Collection only
+            - Link to access modifier docs here: https://developers.flow.com/cadence/language/access-control
         - If we didn't, anyone would have been able to remove a KittyHats NFT from via a user's Collection public 
         Capability
 - Basically enabling the base resource - KittyHats NFT in this case - to receive a KittyHats NFT
