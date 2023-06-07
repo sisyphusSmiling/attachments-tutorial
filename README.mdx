@@ -34,7 +34,7 @@ to leverage their types and functionalities.
 Less duplicate code, easier to bootstrap attention and adoption, and users benefit from the utility you built into 
 something they already presumably own and love - win-win-win!
 
-# Objectives
+# Overview
 
 At the end of this tutorial, you'll have explored composable NFTs by doing the following:
 - Created a base NonFungibleToken contract - KittyVerse
@@ -44,9 +44,17 @@ At the end of this tutorial, you'll have explored composable NFTs by doing the f
 - Mint a KittyHats NFT
 - Attach a KittyHats NFT to your KittyVerse NFT
 
-In essence, you will have put hats on cats!
+In essence, you will have put hats on cats using Cadence attachments! Here's a simple diagram of what you'll be building:
 
-![KittyVerse + KittyHats](./images/kittyverse-kittyhats.png)
+![KittyVerse + KittyHats](./diagrams/cat_with_hat.png)
+
+Notice that there are three primary components to this construction:
+
+1. Base - KittyVerse NFT
+2. Attachment - KittyHats HatAttachment
+3. Attached Resource - KittyHats NFT
+
+With that in mind, let's move on to building!
 
 # Define our Base NFT - KittyVerse
 
