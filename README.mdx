@@ -98,22 +98,42 @@ project since we're building with attachments
         - So to add an attachment to an NFT, you need to first withdraw that NFT from its Collection
 - Syntax
     - Accessing an attachment
-    ```cadence
-    let attachmentRef: &KittyHats.HatAttachment? = nft[KittyHats.HatAttachment]
-    ```
+
+        - In the general sense, accessing an attachment looks similar to indexing a dictionary on a static type 
+          declaration where the return type is an optional reference to the attachment type
+        ```cadence
+        let attachmentRef: &A? = baseResource[A]
+        ```
+        - In the case of KittyVerse and KittyHats, you'll see the following:
+        ```cadence
+        let attachmentRef: &KittyHats.HatAttachment? = nft[KittyHats.HatAttachment]
+        ```
     - Adding an attachment
-    ```cadence
-    access(self) fun addAttachment(toNFT: @KittyVerse.NFT): @KittyVerse.NFT {
-        // If attachment already exists, return
-        if toNFT[HatAttachment] != nil {
-            return <-toNFT
+        - Note that unlike resources, attachments can be created anywhere, including outside of the scope of the 
+          contract that defines them
+          - This is an important consideration for how you design your attachments - you do not have the initialization
+            control that you do with resources
+            - Attachments can only be created while being attached to a base resource - attachments can only be created
+              in the context of an `attach` expression
+        - Let's take a look at the general case of adding an attachment to a base resource. Adding an attachment
+          requires us to reassign the base resource to the result of the `attach` keyword
+        ```cadence
+        let resourceWithAttachment <- attach A() to <- baseResource
+        ```
+        - And in the case of KittyVerse and KittyHats, you'll see the following helper method that adds a HatAttachment
+          to a KittyVerse NFT:
+        ```cadence
+        access(self) fun addAttachment(toNFT: @KittyVerse.NFT): @KittyVerse.NFT {
+            // If attachment already exists, return
+            if toNFT[HatAttachment] != nil {
+                return <-toNFT
+            }
+            // Otherwise, add the attachment
+            return <- attach HatAttachment() to <- toNFT
         }
         // Otherwise, add the attachment
         return <- attach HatAttachment() to <- toNFT
-    }
-    // Otherwise, add the attachment
-    return <- attach HatAttachment() to <- toNFT
-    ```
+        ```
    
 ## Contract Overview
 
