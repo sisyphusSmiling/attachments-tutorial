@@ -19,14 +19,22 @@ purpose. <br/>
 
 Think of composable architectures like [building with legos](https://twitter.com/cdixon/status/1450462593232089088?s=20) 
 - you build something you need as a block or set of blocks and someone else can come along and use those same blocks to 
-build something entirely new.
+build something entirely new.<br/>
 
-Composability on Flow, especially with attachments is permissionless because not only can you build with existing 
+Composability on Flow, especially with attachments, is permissionless because not only can you build with existing 
 components, but no one can stop you from doing so! Hence the term permissionless!
 
 </Callout>
 
-Permissionless composability is one of the unique characteristics of decentralized app development because, as builders, we can freely compose richer or derivative functionalities on top of any existing contracts from other applications or communities. Contracts that you deploy which interact with other contracts are not subject to internal changes or control by the contract you composed it upon. 
+Permissionless composability is one of the unique characteristics of decentralized app development because, as builders,
+we can freely compose richer or derivative functionalities on top of any existing contracts from other applications or
+communities. Contracts that you deploy which interact with other contracts are not subject to internal changes or
+control by the contract you composed it upon. 
+
+Cadence is uniquely suited for composable architectures because Cadence contracts can compose other contracts. As a
+developer, this means that working with contracts is very similar to working with libraries in other languages.
+Simply import them into your contract, scripts, or transactions, and they will be loaded dynamically on-demand for you
+to leverage their types and functionalities.
 
 Less duplicate code, easier to bootstrap attention and adoption, and users benefit from the utility you built into 
 something they already presumably own and love - win-win-win!
@@ -80,8 +88,10 @@ project since we're building with attachments
 
 - Conceptual
     - Attachments are a special type that can be added to resources (doc link needed)
-    - You might be tempted to simply define all your functionality in the attachment, but you'll lose the existence and
-      uniqueness guarantees inherent to resources as well as make access control significantly harder for yourself
+    - You might be tempted to simply define all your functionality in the attachment, but it's important to know that
+      attachments are not resources.
+        - You'll lose the existence and uniqueness guarantees inherent to resources as well as make access control
+          significantly harder for yourself
         - As mentioned earlier, attachments are best thought of as glue between resources
             - Define an attachment that can hold some resource, designed to be added to a base resource
     - Note that you need access to the base resource to add an attachment to it
