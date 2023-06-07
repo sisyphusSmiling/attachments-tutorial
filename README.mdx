@@ -1,0 +1,226 @@
+# TODO: Expand on outline
+
+> :warning: This guidance is in prep for a Playground tutorial, but attachments must first be enabled on Playground for
+this guidance to make sense.
+
+# KittyVerse + KittyHats
+
+To showcase how attachments unlock permissionless composability on Flow, this tutorial will walk you though making your
+own cat-inspired NFT collection and a wardrobe of hats to go along with them. Let's put some hats on some cats!
+
+## What is composability?
+
+Before digging in, let's talk about what we mean by **_composability_**.
+
+<Callout type="info">
+
+Composability is the ability for existing components in one construction to be reused and even extended for another 
+purpose. <br/>
+
+Think of composable architectures like [building with legos](https://twitter.com/cdixon/status/1450462593232089088?s=20) 
+- you build something you need as a block or set of blocks and someone else can come along and use those same blocks to 
+build something entirely new.<br/>
+
+Composability on Flow, especially with attachments, is permissionless because not only can you build with existing 
+components, but no one can stop you from doing so! Hence the term permissionless!
+
+</Callout>
+
+Permissionless composability is one of the unique characteristics of decentralized app development because, as builders,
+we can freely compose richer or derivative functionalities on top of any existing contracts from other applications or
+communities. Contracts that you deploy which interact with other contracts are not subject to internal changes or
+control by the contract you composed it upon. 
+
+Cadence is uniquely suited for composable architectures because Cadence contracts can compose other contracts. As a
+developer, this means that working with contracts is very similar to working with libraries in other languages.
+Simply import them into your contract, scripts, or transactions, and they will be loaded dynamically on-demand for you
+to leverage their types and functionalities.
+
+Less duplicate code, easier to bootstrap attention and adoption, and users benefit from the utility you built into 
+something they already presumably own and love - win-win-win!
+
+# Define our Base NFT - KittyVerse
+
+## NonFungibleToken Standard
+
+- Building on the existing standard
+- Encouraged to also implement MetadataViews and ViewResolver contract interfaces, but keeping things simple
+- We're defining the KittyVerse NFT for the purposes of this tutorial, but just as easily could've used an existing NFT 
+project since we're building with attachments
+- If totally new to this, take a look at NonFungibleToken tutorials - TODO: Link these
+
+## Contract Overview
+
+- Contract interface implementation
+    - Events
+    - Nested resource definitions
+- Attribute overview
+- Opportunities to extend the contract
+
+## Deploy KittyVerse contract
+
+- Deploy NonFungibleToken to `0x01`
+- Deploy KittyVerse to `0x02`
+
+## Setup account & Mint KittyVerse NFT
+
+- send `tx_01_setup_kittyverse_account.cdc` signing with `0x02`
+- send `tx_02_mint_kittyverse_nft.cdc` signing with `0x02`
+- send `tx_02_mint_kittyverse_nft.cdc` again signing with `0x02`
+- query NFT.id - execute `script_01_get_kittyverse_ids.cdc` providing `0x02` as argument
+    - see two unique NFT IDS - take note of them, next let's prep them some hats
+
+# Define our Attachments - KittyHats
+
+## Attachments
+
+- What are they?
+    - In Cadence
+    - Simple mental model
+        - "Like glue between resources"
+        - ![KittyVerse & KittyHats attached](./diagrams/cat_with_hat.png)
+- Why do they matter?
+    - Can create attachments for anything without needing original developer's:
+        - Participation
+        - Permission
+
+### Overview
+
+- Conceptual
+    - Attachments are a special type that can be added to resources (doc link needed)
+    - You might be tempted to simply define all your functionality in the attachment, but it's important to know that
+      attachments are not resources.
+        - You'll lose the existence and uniqueness guarantees inherent to resources as well as make access control
+          significantly harder for yourself
+        - As mentioned earlier, attachments are best thought of as glue between resources
+            - Define an attachment that can hold some resource, designed to be added to a base resource
+    - Note that you need access to the base resource to add an attachment to it
+        - So to add an attachment to an NFT, you need to first withdraw that NFT from its Collection
+- Syntax
+    - Accessing an attachment
+
+        - In the general sense, accessing an attachment looks similar to indexing a dictionary on a static type 
+          declaration where the return type is an optional reference to the attachment type
+        ```cadence
+        let attachmentRef: &A? = baseResource[A]
+        ```
+        - In the case of KittyVerse and KittyHats, you'll see the following:
+        ```cadence
+        let attachmentRef: &KittyHats.HatAttachment? = nft[KittyHats.HatAttachment]
+        ```
+    - Adding an attachment
+        - Note that unlike resources, attachments can be created anywhere, including outside of the scope of the 
+          contract that defines them
+          - This is an important consideration for how you design your attachments - you do not have the initialization
+            control that you do with resources
+            - Attachments can only be created while being attached to a base resource - attachments can only be created
+              in the context of an `attach` expression
+        - Let's take a look at the general case of adding an attachment to a base resource. Adding an attachment
+          requires us to reassign the base resource to the result of the `attach` keyword
+        ```cadence
+        let resourceWithAttachment <- attach A() to <- baseResource
+        ```
+        - And in the case of KittyVerse and KittyHats, you'll see the following helper method that adds a HatAttachment
+          to a KittyVerse NFT:
+        ```cadence
+        access(self) fun addAttachment(toNFT: @KittyVerse.NFT): @KittyVerse.NFT {
+            // If attachment already exists, return
+            if toNFT[HatAttachment] != nil {
+                return <-toNFT
+            }
+            // Otherwise, add the attachment
+            return <- attach HatAttachment() to <- toNFT
+        }
+        // Otherwise, add the attachment
+        return <- attach HatAttachment() to <- toNFT
+        ```
+   
+## Contract Overview
+
+### Why Attachments?
+
+- Why are we defining attachments instead of simply adding a field on the KittyVerse NFTs that can store hats?
+    - If we didn't define KittyVerse, we couldn't do that - no way we can alter the underlying contract
+        - Attachments allow us to permissionlessly extend existing resources with new data and functionality
+        - Why would we do that anyway?
+            
+            - If KittyVerse already has an enthusiastic community behind it
+    - Let's say we're defining both, why use attachments?
+        - Building with attachments is a clear signal that you're designing for this permissionless composability
+            - You encourage others to define their own sorts of attachments for KittyVerse NFTs
+
+### NFT
+
+- Definitions
+
+### HatAttachment
+
+- Common misconception: The attachment is the thing
+    - Correction: Attachments glue the thing(s)
+        - As mentioned previously, attachments are like glue between resources
+    - As of now, attachments can be fully referenced anywhere the NFT can be referenced - this can complicate access 
+    control
+        - We made `removeHat()` `access(contract)` and callable in Collection only
+            - Link to access modifier docs here: https://developers.flow.com/cadence/language/access-control
+        - If we didn't, anyone would have been able to remove a KittyHats NFT from via a user's Collection public 
+        Capability
+- Basically enabling the base resource - KittyHats NFT in this case - to receive a KittyHats NFT
+
+### Collection
+
+- Your standard Collection
+- Added ability to remove KittyHats from KittyVerse NFTs and return them to their Collection
+
+## Deploy KittyHats contract
+
+- Deploy KittyHats to `0x03`
+
+## Setup account & Mint KittyHats NFT
+
+- send `tx_03_setup_kittyhats_account.cdc` signing with `0x02`
+- query NFT.id - `script_03_get_kittyhats_ids_and_names.cdc` providing `0x02` as argument
+    - see one id and note it for the next step
+
+## Put hats on cats
+
+- send `tx_05_attach_hat_to_cat.cdc` signing with `0x02`
+    - provid KittyHats.NFT.id & KittyVerse.NFT.id of your choice
+- query cats & hats - `script_04_get_kittyverse_names_and_hat` providing `0x02` as argument
+    - see the KittyVerse.NFT names - one should have your hat name and the other should have nil - Your cat has a hat!
+- query KittyHats NFT IDs - `script_03_get_kittyhats_ids_and_names.cdc` providing `0x02` as argument
+    - see that your hat is no longer in your Collection
+
+## Remove the hat
+
+- send `tx_06_remove_hat_from_cat.cdc` signing with `0x02` and providing your KittyVerse NFT id name
+- query cats & hats - `script_04_get_kittyverse_names_and_hat` providing `0x02` as argument
+    - see that your cat's hat has been removed
+- query KittyHats NFT IDs - `script_03_get_kittyhats_ids_and_names.cdc` providing `0x02` as argument
+    - see that your hat is back in your Collection
+
+# Considerations
+
+- Great for
+    - Building on existing resources uilding in other contracts 
+    - Establishing a pattern that encourages others to build on those resources you're creating
+- Gotchas: There are some things to bear in mind when working about attachments
+    - Accessing attachments of a given type requires a static type declaration
+    - Attempting to add an attachment to a resource when one already exists will result in a runtime error
+        - This is why we check if an attachment already exists before adding one in the example above
+        - You'll want to lean on simple helper methods to conditionally add attachments within your contracts
+    - Since attachments are native to the language, there is no way to avoid the emergence of attachments on the things
+      you deploy to the wild
+
+# Extra Credit
+
+- Implement MetadataViews and ViewResolver interfaces
+    - Simple implementation
+    - Add image URIs to the NFTs
+- Add Admin resources to both contracts to customize
+    - Enable addition/removal of possible cats & hats + greetings
+    - Private minting
+- Consider: How would you enable a public mints accepting FungibleTokens?
+- Can you think of any other use cases for attachments?
+    - Think about this - we just unlocked the ability for an NFT to own other NFTs
+        - Now extend it - why just own one NFT? What about a whole Collection? What else could NFTs own?
+    - Take a look at Flowverse projects and start building!
