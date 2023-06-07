@@ -1,9 +1,4 @@
-# TODO: Expand on outline
-
-> :warning: This guidance is in prep for a Playground tutorial, but attachments must first be enabled on Playground for
-this guidance to make sense.
-
-# KittyVerse + KittyHats
+# 😸 KittyVerse + KittyHats 🎩
 
 To showcase how attachments unlock permissionless composability on Flow, this tutorial will walk you though making your
 own cat-inspired NFT collection and a wardrobe of hats to go along with them. Let's put some hats on some cats!
@@ -12,7 +7,7 @@ own cat-inspired NFT collection and a wardrobe of hats to go along with them. Le
 
 Before digging in, let's talk about what we mean by **_composability_**.
 
-<Callout type="info">
+<Callout type="success">
 
 Composability is the ability for existing components in one construction to be reused and even extended for another 
 purpose. <br/>
@@ -22,7 +17,7 @@ Think of composable architectures like [building with legos](https://twitter.com
 build something entirely new.<br/>
 
 Composability on Flow, especially with attachments, is permissionless because not only can you build with existing 
-components, but no one can stop you from doing so! Hence the term permissionless!
+components, but no one can stop you from doing so - hence the term permissionless!
 
 </Callout>
 
@@ -39,17 +34,56 @@ to leverage their types and functionalities.
 Less duplicate code, easier to bootstrap attention and adoption, and users benefit from the utility you built into 
 something they already presumably own and love - win-win-win!
 
+# Objectives
+
+At the end of this tutorial, you'll have explored composable NFTs by doing the following:
+- Created a base NonFungibleToken contract - KittyVerse
+- Created an attachment-focused NonFungibleToken contract - KittyHats
+- Setup collections for both NFTs
+- Mint a KittyVerse NFT
+- Mint a KittyHats NFT
+- Attach a KittyHats NFT to your KittyVerse NFT
+
+In essence, you will have put hats on cats!
+
+![KittyVerse + KittyHats](./images/kittyverse-kittyhats.png)
+
 # Define our Base NFT - KittyVerse
+
+<Callout type="info"> 
+
+Instructions that require you to take action are always included in a callout box like this one.
+These highlighted actions are all that you need to do to get your code running, but reading the rest is necessary to
+understand the language's design.
+
+</Callout>
 
 ## NonFungibleToken Standard
 
-- Building on the existing standard
-- Encouraged to also implement MetadataViews and ViewResolver contract interfaces, but keeping things simple
-- We're defining the KittyVerse NFT for the purposes of this tutorial, but just as easily could've used an existing NFT 
-project since we're building with attachments
-- If totally new to this, take a look at NonFungibleToken tutorials - TODO: Link these
+For your first contract, you'll be implementing the NFT standard in the KittyVerse NFT contract.
+
+<Callout type="success">
+
+The NonFungibleToken standard is a contract interface that defines NFT on Flow. If you find this tutorial a too dense,
+take a look at the [Non-Fungible Token tutorials](https://developers.flow.com/cadence/tutorial/non-fungible-tokens-1) for
+more focused coverage on the standard.<br/>
+
+</Callout>
+
+For our purposes here, we're going to implement a single contract interface. For production contracts, you'll want to
+also familiarize yourself with the MetadataViews and ViewResolver contract interfaces found in the 
+[flow-nft repo]((https://github.com/onflow/flow-nft)).
 
 ## Contract Overview
+
+<Callout type="warning">
+
+It is important to remember that while this tutorial implements a working non-fungible token, it has been simplified for
+educational purposes and is not what any project should use in production. See the Flow Fungible Token standard for the
+standard interface and example implementation. Additionally, check out the Kitty Items Repo for a production ready
+version!
+
+</Callout>
 
 - Contract interface implementation
     - Events
@@ -72,13 +106,17 @@ project since we're building with attachments
 
 # Define our Attachments - KittyHats
 
+While you just created KittyVerse NFT to serve as a basis for attachments, recall that attachments enable us build on
+**_any_** resource including existing NFTs. This means that we could have just as easily chosen an existing NFT project
+and started building our attachments contract for those existing NFTs.
+
 ## Attachments
 
 - What are they?
     - In Cadence
     - Simple mental model
         - "Like glue between resources"
-        - ![KittyVerse & KittyHats attached](./diagrams/cat_with_hat.png)
+        - 
 - Why do they matter?
     - Can create attachments for anything without needing original developer's:
         - Participation
