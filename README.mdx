@@ -1,6 +1,6 @@
 # 😸 KittyVerse + KittyHats 🎩
 
-To showcase how attachments unlock permissionless composability on Flow, this tutorial will walk you though making your
+To showcase how attachments unlock **_permissionless composability_** on Flow, this tutorial will walk you though making your
 own cat-inspired NFT collection and a wardrobe of hats to go along with them. Let's put some hats on some cats!
 
 ## What is composability?
@@ -12,9 +12,9 @@ Before digging in, let's talk about what we mean by **_composability_**.
 Composability is the ability for existing components in one construction to be reused and even extended for another 
 purpose. <br/>
 
-Think of composable architectures like [building with legos](https://twitter.com/cdixon/status/1450462593232089088?s=20) 
-- you build something you need as a block or set of blocks and someone else can come along and use those same blocks to 
-build something entirely new.<br/>
+Think of composable architectures like
+[building with legos](https://twitter.com/cdixon/status/1450462593232089088?s=20) - you build something you need as a
+block or set of blocks and someone else can come along and use those same blocks to build something entirely new.<br/>
 
 Composability on Flow, especially with attachments, is permissionless because not only can you build with existing 
 components, but no one can stop you from doing so - hence the term permissionless!
@@ -29,14 +29,17 @@ control by the contract you composed it upon.
 Cadence is uniquely suited for composable architectures because Cadence contracts can compose other contracts. As a
 developer, this means that working with contracts is very similar to working with libraries in other languages.
 Simply import them into your contract, scripts, or transactions, and they will be loaded dynamically on-demand for you
-to leverage their types and functionalities.
+to leverage their types and functionalities. See
+[contract borrowing](https://developers.flow.com/cadence/language/contracts#borrowing-a-deployed-contract) for a
+unique example of this.
 
 Less duplicate code, easier to bootstrap attention and adoption, and users benefit from the utility you built into 
 something they already presumably own and love - win-win-win!
 
 # Overview
 
-At the end of this tutorial, you'll have explored composable NFTs by doing the following:
+At the end of this tutorial, you'll have explored and created your own composable NFTs by doing the following:
+
 - Created a base NonFungibleToken contract - KittyVerse
 - Created an attachment-focused NonFungibleToken contract - KittyHats
 - Setup collections for both NFTs
@@ -44,15 +47,15 @@ At the end of this tutorial, you'll have explored composable NFTs by doing the f
 - Mint a KittyHats NFT
 - Attach a KittyHats NFT to your KittyVerse NFT
 
-In essence, you will have put hats on cats using Cadence attachments! Here's a simple diagram of what you'll be building:
+Here's a simple diagram of what you'll be building:
 
 ![KittyVerse + KittyHats](./diagrams/cat_with_hat.png)
 
 Notice that there are three primary components to this construction:
 
-1. Base - KittyVerse NFT
-2. Attachment - KittyHats HatAttachment
-3. Attached Resource - KittyHats NFT
+1. **Base** - KittyVerse NFT
+2. **Attachment** - KittyHats HatAttachment
+3. **Attached Resource** - KittyHats NFT
 
 With that in mind, let's move on to building!
 
@@ -72,15 +75,132 @@ For your first contract, you'll be implementing the NFT standard in the KittyVer
 
 <Callout type="success">
 
-The NonFungibleToken standard is a contract interface that defines NFT on Flow. If you find this tutorial a too dense,
-take a look at the [Non-Fungible Token tutorials](https://developers.flow.com/cadence/tutorial/non-fungible-tokens-1) for
-more focused coverage on the standard.<br/>
+The NonFungibleToken standard is a contract interface that defines NFT on Flow. If you find this tutorial too dense,
+take a look at the [Non-Fungible Token tutorials](https://developers.flow.com/cadence/tutorial/non-fungible-tokens-1)
+for more focused coverage on the standard.
 
 </Callout>
 
 For our purposes here, we're going to implement a single contract interface. For production contracts, you'll want to
 also familiarize yourself with the MetadataViews and ViewResolver contract interfaces found in the 
-[flow-nft repo]((https://github.com/onflow/flow-nft)).
+[flow-nft repo](https://github.com/onflow/flow-nft).
+
+Before continuing, let's briefly cover non-fungible tokens on Flow. In essence, an NFT on Flow is a resource defined in
+a NonFungibleToken implementing contract, and is represented by a unique ID.
+
+The NFT resource itself is very simple. You can see the basic resource interface and implementing resource pair here:
+
+```cadence
+pub resource interface INFT {
+    pub let id: UInt64
+    
+    /// Function that returns all the Metadata Views implemented by a Non Fungible Token
+    ///
+    /// @return An array of Types defining the implemented views. This value will be used by
+    ///         developers to know which parameter to pass to the resolveView() method.
+    ///
+    pub fun getViews(): [Type] {
+        return []
+    }
+
+    /// Function that resolves a metadata view for this token.
+    ///
+    /// @param view: The Type of the desired view.
+    /// @return A structure representing the requested view.
+    ///
+    pub fun resolveView(_ view: Type): AnyStruct? {
+        return nil
+    }
+}
+
+/// Requirement that all conforming NFT smart contracts have
+/// to define a resource called NFT that conforms to INFT
+///
+pub resource NFT: INFT {
+    pub let id: UInt64
+}
+```
+
+As you might imagine, an NFT ID is not very interesting on its own. To make it more interesting, the standard interface
+also includes methods to retrieve metadata about the NFT - `getViews()` and `resolveViews()` to retrieve supported views
+and resolve a specific view respectively. These methods in the `INFT` interface are implemented as default methods which
+is why you don't see them in the `NFT` above, but can be overridden in the implementing contract.
+
+The NonFungibleToken contract interface also includes another nested type - `NonFungibleToken.Collection` - which as you
+can guess is a collection of NFTs. This is the resource that stores NFTs in the owner's account storage. A `Collection`
+implements standard interfaces `Receiver`, `Provider`, and `CollectionPublic` which expose `deposit()`, `withdraw()`,
+and public helper methods respectively.
+
+```cadence
+/// Requirement for the concrete resource type
+/// to be declared in the implementing contract
+///
+pub resource Collection: Provider, Receiver, CollectionPublic {
+
+    /// Dictionary to hold the NFTs in the Collection
+    pub var ownedNFTs: @{UInt64: NFT}
+
+    /// Removes an NFT from the collection and moves it to the caller
+    ///
+    /// @param withdrawID: The ID of the NFT that will be withdrawn
+    /// @return The resource containing the desired NFT
+    ///
+    pub fun withdraw(withdrawID: UInt64): @NFT
+
+    /// Takes a NFT and adds it to the collections dictionary
+    /// and adds the ID to the ID array
+    /// 
+    /// @param token: An NFT resource
+    ///
+    pub fun deposit(token: @NFT)
+
+    /// Returns an array of the IDs that are in the collection
+    ///
+    /// @return An array containing all the IDs on the collection
+    ///
+    pub fun getIDs(): [UInt64]
+
+    /// Returns a borrowed reference to an NFT in the collection
+    /// so that the caller can read data and call methods from it
+    ///
+    /// @param id: The ID of the NFT that want to be borrowed
+    /// @return A reference to the NFT
+    ///
+    pub fun borrowNFT(id: UInt64): &NFT {
+        pre {
+            self.ownedNFTs[id] != nil: "NFT does not exist in the collection!"
+        }
+    }
+}
+```
+
+The final small, but necessary pieces of an NFT implementing contract are the contract variable `totalSupply` and the
+contract events.
+
+```cadence
+/// The total number of tokens of this type in existence
+pub var totalSupply: UInt64
+
+/// Event that emitted when the NFT contract is initialized
+///
+pub event ContractInitialized()
+
+/// Event that is emitted when a token is withdrawn,
+/// indicating the owner of the collection that it was withdrawn from.
+///
+/// If the collection is not in an account's storage, `from` will be `nil`.
+///
+pub event Withdraw(id: UInt64, from: Address?)
+
+/// Event that emitted when a token is deposited to a collection.
+///
+/// It indicates the owner of the collection that it was deposited to.
+///
+pub event Deposit(id: UInt64, to: Address?)
+```
+
+Implementing each of these is all there is to creating your own NFT contract on Flow. In the next section, we'll walk
+through what this looks like for KittyVerse.
 
 ## Contract Overview
 
@@ -88,8 +208,8 @@ also familiarize yourself with the MetadataViews and ViewResolver contract inter
 
 It is important to remember that while this tutorial implements a working non-fungible token, it has been simplified for
 educational purposes and is not what any project should use in production. See the Flow Fungible Token standard for the
-standard interface and example implementation. Additionally, check out the Kitty Items Repo for a production ready
-version!
+standard interface and example implementation. Additionally, check out the 
+[Kitty Items Repo](https://github.com/onflow/kitty-items) for a production ready version!
 
 </Callout>
 
